@@ -1,4 +1,4 @@
-name: 'Push Build Information to Octopus Deploy'
+name: 'Push Build Information to Octopus Deploy (Solutions Engineering fork)'
 description: 'GitHub Action to push build information to Octopus Deploy'
 author: 'Octopus Deploy'
 branding:
