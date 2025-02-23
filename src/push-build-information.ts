@@ -40,6 +40,12 @@ export async function pushBuildInformationFromInputs(
     })
   }
 
+  // If there are mo matching commits, we have nothing to add to the build information
+  if (!commits || commits.length === 0) {
+    client.info('None of the commits match the paths, so no build information will be pushed to Octopus')
+    return
+  }
+
   const command: CreateOctopusBuildInformationCommand = {
     spaceName: parameters.space,
     BuildEnvironment: 'GitHub Actions',
