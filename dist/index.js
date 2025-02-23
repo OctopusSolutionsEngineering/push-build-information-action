@@ -55217,43 +55217,45 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.pushBuildInformationFromInputs = void 0;
+exports.filterCommits = exports.pushBuildInformationFromInputs = void 0;
 const core_1 = __nccwpck_require__(37484);
 const github_1 = __nccwpck_require__(93228);
 const api_client_1 = __nccwpck_require__(91212);
 const ant_path_matcher_1 = __importDefault(__nccwpck_require__(23444));
 function pushBuildInformationFromInputs(client, runId, parameters) {
-    var _a;
     return __awaiter(this, void 0, void 0, function* () {
+        if ((0, core_1.isDebug)()) {
+            client.info(`Parameters: ${parameters}`);
+        }
         let branch = parameters.branch || github_1.context.ref;
         if (branch.startsWith('refs/heads/')) {
             branch = branch.substring('refs/heads/'.length);
         }
-        const matcher = new ant_path_matcher_1.default();
         const repoUri = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}`;
         const pushEvent = github_1.context.payload;
-        const commits = ((_a = pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits) === null || _a === void 0 ? void 0 : _a.filter((commit) => {
-            if (!parameters.paths || parameters.paths.length === 0) {
-                return true;
-            }
-            return parameters.paths.some((path) => {
-                var _a, _b, _c;
-                return ((_a = commit.added) === null || _a === void 0 ? void 0 : _a.some((added) => matcher.matcher(path, added))) ||
-                    ((_b = commit.modified) === null || _b === void 0 ? void 0 : _b.some((modified) => matcher.matcher(path, modified))) ||
-                    ((_c = commit.removed) === null || _c === void 0 ? void 0 : _c.some((removed) => matcher.matcher(path, removed)));
-            });
-        }).map((commit) => {
+        const commits = filterCommits(pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits, parameters.paths).map((commit) => {
             return {
                 Id: commit.id,
                 Comment: commit.message
             };
-        })) || [];
+        }) || [];
         const packages = [];
         for (const packageId of parameters.packages) {
             packages.push({
                 Id: packageId,
                 Version: parameters.version
             });
+        }
+        if (parameters.paths) {
+            if (!commits) {
+                client.info('None of the commits match the paths, so no build information will be pushed to Octopus');
+                return;
+            }
+            if ((0, core_1.isDebug)()) {
+                client.info(`Matched the following commits:\n${commits
+                    .map((commit) => commit.Id)
+                    .join('\n')}`);
+            }
         }
         const command = {
             spaceName: parameters.space,
@@ -55276,6 +55278,24 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
     });
 }
 exports.pushBuildInformationFromInputs = pushBuildInformationFromInputs;
+function filterCommits(commits, paths) {
+    if (!commits) {
+        return [];
+    }
+    const matcher = new ant_path_matcher_1.default();
+    return commits === null || commits === void 0 ? void 0 : commits.filter((commit) => {
+        if (!paths || paths.length === 0) {
+            return true;
+        }
+        return paths.some((path) => {
+            var _a, _b, _c;
+            return ((_a = commit.added) === null || _a === void 0 ? void 0 : _a.some((added) => matcher.match(path, added))) ||
+                ((_b = commit.modified) === null || _b === void 0 ? void 0 : _b.some((modified) => matcher.match(path, modified))) ||
+                ((_c = commit.removed) === null || _c === void 0 ? void 0 : _c.some((removed) => matcher.match(path, removed)));
+        });
+    });
+}
+exports.filterCommits = filterCommits;
 
 
 /***/ }),
