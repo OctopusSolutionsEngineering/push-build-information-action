@@ -9,6 +9,7 @@ import {
   PackageIdentity
 } from '@octopusdeploy/api-client'
 import { InputParameters } from './input-parameters'
+import AntPathMatcher from 'ant-path-matcher'
 
 export async function pushBuildInformationFromInputs(
   client: Client,
@@ -24,7 +25,7 @@ export async function pushBuildInformationFromInputs(
   const repoUri = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}`
   const pushEvent = context.payload as PushEvent | undefined
   const commits: IOctopusBuildInformationCommit[] =
-    pushEvent?.commits?.map((commit: Commit) => {
+    filterCommits(pushEvent?.commits, parameters.paths).map((commit: Commit) => {
       return {
         Id: commit.id,
         Comment: commit.message
@@ -60,4 +61,26 @@ export async function pushBuildInformationFromInputs(
   await repository.push(command, parameters.overwriteMode)
 
   client.info('Successfully pushed build information to Octopus')
+}
+
+export function filterCommits(commits: Commit[] | undefined | null, paths: string[] | undefined | null): Commit[] {
+  if (!commits) {
+    return []
+  }
+
+  const matcher = new AntPathMatcher()
+  return commits?.filter((commit: Commit) => {
+    // If no paths are defined, we match everything
+    if (!paths || paths.length === 0) {
+      return true
+    }
+
+    // Include only those commits that touch one or more of the paths
+    return paths.some(
+      (path: string) =>
+        commit.added?.some((added: string) => matcher.match(path, added)) ||
+        commit.modified?.some((modified: string) => matcher.match(path, modified)) ||
+        commit.removed?.some((removed: string) => matcher.match(path, removed))
+    )
+  })
 }

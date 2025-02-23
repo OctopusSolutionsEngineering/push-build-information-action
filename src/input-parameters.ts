@@ -21,6 +21,7 @@ export interface InputParameters {
   version: string
   branch?: string
   overwriteMode: OverwriteMode
+  paths: string[]
 }
 
 export function get(isRetry: boolean): InputParameters {
@@ -36,7 +37,8 @@ export function get(isRetry: boolean): InputParameters {
     packages: getMultilineInput('packages', { required: true }),
     version: getInput('version', { required: true }),
     branch: getInput('branch') || undefined,
-    overwriteMode
+    overwriteMode,
+    paths: getMultilineInput('paths', { required: false })
   }
 
   const errors: string[] = []

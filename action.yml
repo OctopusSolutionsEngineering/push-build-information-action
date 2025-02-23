@@ -21,6 +21,8 @@ inputs:
     description: 'The base URL hosting Octopus Deploy (i.e. "https://octopus.example.com/"). It is recommended to retrieve this value from an environment variable.'
   space:
     description: 'The name or ID of a space within which this command will be executed. If omitted, the default space will be used.'
+  paths:
+    description: 'A multi-line list of ant paths to match against commits. This is useful when you want to include only the commits that modify files matching the specified paths, for example in mono-repo.'
 
 runs:
   using: 'node20'
