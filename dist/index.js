@@ -55289,6 +55289,11 @@ function filterCommits(commits, paths) {
         if (!paths || paths.length === 0) {
             return true;
         }
+        if ((!commit.added || commit.added.length === 0) &&
+            (!commit.modified || commit.modified.length === 0) &&
+            (!commit.removed || commit.removed.length === 0)) {
+            return true;
+        }
         return paths.some((path) => {
             var _a, _b, _c;
             return ((_a = commit.added) === null || _a === void 0 ? void 0 : _a.some((added) => matcher.match(path, added))) ||

@@ -97,6 +97,15 @@ export function filterCommits(commits: Commit[] | undefined | null, paths: strin
       return true
     }
 
+    // If nothing appears to be added, modified or removed, return the commit
+    if (
+      (!commit.added || commit.added.length === 0) &&
+      (!commit.modified || commit.modified.length === 0) &&
+      (!commit.removed || commit.removed.length === 0)
+    ) {
+      return true
+    }
+
     // Include only those commits that touch one or more of the paths
     return paths.some(
       (path: string) =>
