@@ -55224,9 +55224,6 @@ const api_client_1 = __nccwpck_require__(91212);
 const ant_path_matcher_1 = __importDefault(__nccwpck_require__(23444));
 function pushBuildInformationFromInputs(client, runId, parameters) {
     return __awaiter(this, void 0, void 0, function* () {
-        if ((0, core_1.isDebug)()) {
-            client.info(`Parameters: ${parameters}`);
-        }
         let branch = parameters.branch || github_1.context.ref;
         if (branch.startsWith('refs/heads/')) {
             branch = branch.substring('refs/heads/'.length);
@@ -55247,7 +55244,7 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
             });
         }
         if (parameters.paths) {
-            if (!commits) {
+            if (!commits || commits.length === 0) {
                 client.info('None of the commits match the paths, so no build information will be pushed to Octopus');
                 return;
             }

@@ -16,10 +16,6 @@ export async function pushBuildInformationFromInputs(
   runId: number,
   parameters: InputParameters
 ): Promise<void> {
-  if (isDebug()) {
-    client.info(`Parameters: ${parameters}`)
-  }
-
   // get the branch name
   let branch: string = parameters.branch || context.ref
   if (branch.startsWith('refs/heads/')) {
@@ -46,7 +42,7 @@ export async function pushBuildInformationFromInputs(
 
   // If there are mo matching commits, but we did specify some paths, we have nothing to add to the build information
   if (parameters.paths) {
-    if (!commits) {
+    if (!commits || commits.length === 0) {
       client.info('None of the commits match the paths, so no build information will be pushed to Octopus')
       return
     }
