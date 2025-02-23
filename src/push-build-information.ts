@@ -16,6 +16,10 @@ export async function pushBuildInformationFromInputs(
   runId: number,
   parameters: InputParameters
 ): Promise<void> {
+  if (isDebug()) {
+    client.info(`Parameters: ${parameters}`)
+  }
+
   // get the branch name
   let branch: string = parameters.branch || context.ref
   if (branch.startsWith('refs/heads/')) {
