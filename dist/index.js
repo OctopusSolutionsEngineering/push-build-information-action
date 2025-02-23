@@ -55243,6 +55243,11 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
                 Version: parameters.version
             });
         }
+        if ((0, core_1.isDebug)()) {
+            client.info(`Commits added files ${pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits.flatMap(c => c.added).join(', ')}`);
+            client.info(`Commits removed files ${pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits.flatMap(c => c.removed).join(', ')}`);
+            client.info(`Commits modified files ${pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits.flatMap(c => c.modified).join(', ')}`);
+        }
         if (parameters.paths) {
             if (!commits || commits.length === 0) {
                 client.info('None of the commits match the paths, so no build information will be pushed to Octopus');
