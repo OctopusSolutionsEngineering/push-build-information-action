@@ -41,9 +41,7 @@ export async function pushBuildInformationFromInputs(
   }
 
   if (isDebug()) {
-    client.info(`Commits added files ${pushEvent?.commits.flatMap(c => c.added).join(', ')}`)
-    client.info(`Commits removed files ${pushEvent?.commits.flatMap(c => c.removed).join(', ')}`)
-    client.info(`Commits modified files ${pushEvent?.commits.flatMap(c => c.modified).join(', ')}`)
+    client.info(`Commits ${pushEvent?.commits.map(c => JSON.stringify(c, null, 2)).join('\n')}`)
   }
 
   // If there are mo matching commits, but we did specify some paths, we have nothing to add to the build information

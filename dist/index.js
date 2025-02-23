@@ -55244,9 +55244,7 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
             });
         }
         if ((0, core_1.isDebug)()) {
-            client.info(`Commits added files ${pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits.flatMap(c => c.added).join(', ')}`);
-            client.info(`Commits removed files ${pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits.flatMap(c => c.removed).join(', ')}`);
-            client.info(`Commits modified files ${pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits.flatMap(c => c.modified).join(', ')}`);
+            client.info(`Commits ${pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits.map(c => JSON.stringify(c, null, 2)).join('\n')}`);
         }
         if (parameters.paths) {
             if (!commits || commits.length === 0) {
