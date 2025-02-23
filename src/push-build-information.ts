@@ -40,8 +40,8 @@ export async function pushBuildInformationFromInputs(
     })
   }
 
-  // If there are mo matching commits, we have nothing to add to the build information
-  if (!commits || commits.length === 0) {
+  // If there are mo matching commits, but we did specify some paths, we have nothing to add to the build information
+  if (!commits && parameters.paths) {
     client.info('None of the commits match the paths, so no build information will be pushed to Octopus')
     return
   }
