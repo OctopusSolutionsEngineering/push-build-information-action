@@ -44,8 +44,9 @@ steps:
 ## 📥 Inputs
 
 | Name             | Description                                                                                                                                                                                                  |
-| :--------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|:-----------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `packages`       | A multi-line list of packages to push build information to Octopus Deploy.                                                                                                                                   |
+| `paths`          | A multiline list of ant paths that must match the added, removed, or modified files in a commit for the commit to be included in the build information. Leave blank to match all commits.                    |
 | `version`        | The version of the package(s).                                                                                                                                                                               |
 | `branch`         | The branch name, if omitted the GitHub ref will be used.                                                                                                                                                     |
 | `overwrite_mode` | Determines the action to perform with build information if it already exists in the repository. Valid input values are `FailIfExists` (default), `OverwriteExisting`, and `IgnoreIfExists`.                  |
