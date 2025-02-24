@@ -55232,7 +55232,7 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
         }
         const repoUri = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}`;
         const pushEvent = github_1.context.payload;
-        const commits = (yield filterCommits(client, pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits, parameters.paths)).map((commit) => {
+        const commits = (yield filterCommits(client, pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits, parameters.paths, getPaths)).map((commit) => {
             return {
                 Id: commit.id,
                 Comment: commit.message
@@ -55280,24 +55280,19 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
     });
 }
 exports.pushBuildInformationFromInputs = pushBuildInformationFromInputs;
-function filterCommits(client, commits, paths) {
+function filterCommits(client, commits, paths, getPathsFunc) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (!commits) {
+        if (!commits || commits.length === 0) {
             return [];
         }
-        if (!paths) {
+        if (!paths || paths.length === 0) {
             return commits;
         }
         const matcher = new ant_path_matcher_1.default();
         try {
-            const matchingCommits = [];
-            for (const commit of commits) {
-                const modifiedPaths = yield getPaths(commit.id);
-                if (paths.some((path) => modifiedPaths.some((added) => matcher.match(path, added)))) {
-                    matchingCommits.push(commit);
-                }
-            }
-            return matchingCommits;
+            return (yield Promise.all(commits.map((commit) => __awaiter(this, void 0, void 0, function* () { return getPathsFunc(commit); }))))
+                .filter(commitDetails => commitDetails.paths.some(path => paths.some(p => matcher.match(p, path))))
+                .map(commitDetails => commitDetails.commit);
         }
         catch (error) {
             if (error instanceof request_error_1.RequestError) {
@@ -55311,17 +55306,17 @@ function filterCommits(client, commits, paths) {
     });
 }
 exports.filterCommits = filterCommits;
-function getPaths(commitSha) {
+function getPaths(commit) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
         const githubToken = (0, core_1.getInput)('GITHUB_TOKEN');
         const octokit = new core_2.Octokit({ auth: githubToken });
-        const { data: commit } = yield octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
+        const { data: commitDetails } = yield octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
-            ref: commitSha
+            ref: commit.id
         });
-        return ((_a = commit.files) === null || _a === void 0 ? void 0 : _a.map(file => file.filename)) || [];
+        return { commit, paths: ((_a = commitDetails.files) === null || _a === void 0 ? void 0 : _a.map(file => file.filename)) || [] };
     });
 }
 
