@@ -102,15 +102,9 @@ export async function filterCommits(
   const matcher = new AntPathMatcher()
 
   try {
-    const matchingCommits: Commit[] = []
-    for (const commit of commits) {
-      const modifiedPaths = await getPaths(commit.id)
-      if (paths.some((path: string) => modifiedPaths.some((added: string) => matcher.match(path, added)))) {
-        matchingCommits.push(commit)
-      }
-    }
-
-    return matchingCommits
+    return (await Promise.all(commits.map(async commit => getPaths(commit))))
+      .filter(commitDetails => commitDetails.paths.some(path => paths.some(p => matcher.match(p, path))))
+      .map(commitDetails => commitDetails.commit)
   } catch (error) {
     // Octokit errors are instances of RequestError, so they always have an `error.status` property containing the HTTP response code.
     if (error instanceof RequestError) {
@@ -124,7 +118,7 @@ export async function filterCommits(
   }
 }
 
-async function getPaths(commitSha: string): Promise<string[]> {
+async function getPaths(commit: Commit): Promise<{ commit: Commit; paths: string[] }> {
   // Get the GitHub token
   const githubToken = getInput('GITHUB_TOKEN')
 
@@ -132,11 +126,11 @@ async function getPaths(commitSha: string): Promise<string[]> {
   const octokit = new Octokit({ auth: githubToken })
 
   // Get the commit information
-  const { data: commit } = await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
+  const { data: commitDetails } = await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
     owner: context.repo.owner,
     repo: context.repo.repo,
-    ref: commitSha
+    ref: commit.id
   })
 
-  return commit.files?.map(file => file.filename) || []
+  return { commit, paths: commitDetails.files?.map(file => file.filename) || [] }
 }
