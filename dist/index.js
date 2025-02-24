@@ -55221,6 +55221,7 @@ exports.filterCommits = exports.pushBuildInformationFromInputs = void 0;
 const core_1 = __nccwpck_require__(37484);
 const github_1 = __nccwpck_require__(93228);
 const core_2 = __nccwpck_require__(61897);
+const request_error_1 = __nccwpck_require__(93708);
 const api_client_1 = __nccwpck_require__(91212);
 const ant_path_matcher_1 = __importDefault(__nccwpck_require__(23444));
 function pushBuildInformationFromInputs(client, runId, parameters) {
@@ -55231,7 +55232,7 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
         }
         const repoUri = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}`;
         const pushEvent = github_1.context.payload;
-        const commits = (yield filterCommits(pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits, parameters.paths)).map((commit) => {
+        const commits = (yield filterCommits(client, pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits, parameters.paths)).map((commit) => {
             return {
                 Id: commit.id,
                 Comment: commit.message
@@ -55279,7 +55280,7 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
     });
 }
 exports.pushBuildInformationFromInputs = pushBuildInformationFromInputs;
-function filterCommits(commits, paths) {
+function filterCommits(client, commits, paths) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!commits) {
             return [];
@@ -55288,14 +55289,25 @@ function filterCommits(commits, paths) {
             return commits;
         }
         const matcher = new ant_path_matcher_1.default();
-        const matchingCommits = [];
-        for (const commit of commits) {
-            const modifiedPaths = yield getPaths(commit.id);
-            if (paths.some((path) => modifiedPaths.some((added) => matcher.match(path, added)))) {
-                matchingCommits.push(commit);
+        try {
+            const matchingCommits = [];
+            for (const commit of commits) {
+                const modifiedPaths = yield getPaths(commit.id);
+                if (paths.some((path) => modifiedPaths.some((added) => matcher.match(path, added)))) {
+                    matchingCommits.push(commit);
+                }
             }
+            return matchingCommits;
         }
-        return matchingCommits;
+        catch (error) {
+            if (error instanceof request_error_1.RequestError) {
+                client.error(`Error getting paths for commits: ${error.status} ${error.message}`, error);
+            }
+            else {
+                client.error(`Error getting paths for commits`);
+            }
+            throw error;
+        }
     });
 }
 exports.filterCommits = filterCommits;

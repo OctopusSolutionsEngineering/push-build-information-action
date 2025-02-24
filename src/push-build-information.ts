@@ -2,6 +2,8 @@ import { getInput, isDebug } from '@actions/core'
 import { context } from '@actions/github'
 import { Commit, PushEvent } from '@octokit/webhooks-types/schema'
 import { Octokit } from '@octokit/core'
+import { RequestError } from '@octokit/request-error'
+
 import {
   BuildInformationRepository,
   Client,
@@ -26,7 +28,7 @@ export async function pushBuildInformationFromInputs(
   const repoUri = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}`
   const pushEvent = context.payload as PushEvent | undefined
   const commits: IOctopusBuildInformationCommit[] =
-    (await filterCommits(pushEvent?.commits, parameters.paths)).map((commit: Commit) => {
+    (await filterCommits(client, pushEvent?.commits, parameters.paths)).map((commit: Commit) => {
       return {
         Id: commit.id,
         Comment: commit.message
@@ -85,6 +87,7 @@ export async function pushBuildInformationFromInputs(
 }
 
 export async function filterCommits(
+  client: Client,
   commits: Commit[] | undefined | null,
   paths: string[] | undefined | null
 ): Promise<Commit[]> {
@@ -98,15 +101,27 @@ export async function filterCommits(
 
   const matcher = new AntPathMatcher()
 
-  const matchingCommits: Commit[] = []
-  for (const commit of commits) {
-    const modifiedPaths = await getPaths(commit.id)
-    if (paths.some((path: string) => modifiedPaths.some((added: string) => matcher.match(path, added)))) {
-      matchingCommits.push(commit)
+  try {
+    const matchingCommits: Commit[] = []
+    for (const commit of commits) {
+      const modifiedPaths = await getPaths(commit.id)
+      if (paths.some((path: string) => modifiedPaths.some((added: string) => matcher.match(path, added)))) {
+        matchingCommits.push(commit)
+      }
     }
-  }
 
-  return matchingCommits
+    return matchingCommits
+  } catch (error) {
+    // Octokit errors are instances of RequestError, so they always have an `error.status` property containing the HTTP response code.
+    if (error instanceof RequestError) {
+      client.error(`Error getting paths for commits: ${error.status} ${error.message}`, error)
+    } else {
+      // handle all other errors
+      client.error(`Error getting paths for commits`)
+    }
+
+    throw error
+  }
 }
 
 async function getPaths(commitSha: string): Promise<string[]> {
