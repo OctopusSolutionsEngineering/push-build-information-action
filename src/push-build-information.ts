@@ -1,6 +1,7 @@
-import { isDebug } from '@actions/core'
+import { getInput, isDebug } from '@actions/core'
 import { context } from '@actions/github'
 import { Commit, PushEvent } from '@octokit/webhooks-types/schema'
+import { Octokit } from '@octokit/core'
 import {
   BuildInformationRepository,
   Client,
@@ -25,7 +26,7 @@ export async function pushBuildInformationFromInputs(
   const repoUri = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}`
   const pushEvent = context.payload as PushEvent | undefined
   const commits: IOctopusBuildInformationCommit[] =
-    filterCommits(pushEvent?.commits, parameters.paths).map((commit: Commit) => {
+    (await filterCommits(pushEvent?.commits, parameters.paths)).map((commit: Commit) => {
       return {
         Id: commit.id,
         Comment: commit.message
@@ -83,33 +84,44 @@ export async function pushBuildInformationFromInputs(
   client.info('Successfully pushed build information to Octopus')
 }
 
-export function filterCommits(commits: Commit[] | undefined | null, paths: string[] | undefined | null): Commit[] {
+export async function filterCommits(
+  commits: Commit[] | undefined | null,
+  paths: string[] | undefined | null
+): Promise<Commit[]> {
   if (!commits) {
     return []
   }
 
+  if (!paths) {
+    return commits
+  }
+
   const matcher = new AntPathMatcher()
-  return commits?.filter((commit: Commit) => {
-    // If no paths are defined, we match everything
-    if (!paths || paths.length === 0) {
-      return true
-    }
 
-    // If nothing appears to be added, modified or removed, return the commit
-    if (
-      (!commit.added || commit.added.length === 0) &&
-      (!commit.modified || commit.modified.length === 0) &&
-      (!commit.removed || commit.removed.length === 0)
-    ) {
-      return true
+  const matchingCommits: Commit[] = []
+  for (const commit of commits) {
+    const modifiedPaths = await getPaths(commit.id)
+    if (paths.some((path: string) => modifiedPaths.some((added: string) => matcher.match(path, added)))) {
+      matchingCommits.push(commit)
     }
+  }
 
-    // Include only those commits that touch one or more of the paths
-    return paths.some(
-      (path: string) =>
-        commit.added?.some((added: string) => matcher.match(path, added)) ||
-        commit.modified?.some((modified: string) => matcher.match(path, modified)) ||
-        commit.removed?.some((removed: string) => matcher.match(path, removed))
-    )
+  return matchingCommits
+}
+
+async function getPaths(commitSha: string): Promise<string[]> {
+  // Get the GitHub token
+  const githubToken = getInput('GITHUB_TOKEN')
+
+  // Initialize Octokit
+  const octokit = new Octokit({ auth: githubToken })
+
+  // Get the commit information
+  const { data: commit } = await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    ref: commitSha
   })
+
+  return commit.files?.map(file => file.filename) || []
 }
