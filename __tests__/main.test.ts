@@ -79,59 +79,69 @@ describe('filterCommits', () => {
     }
   }
 
+  function getPaths(commit: Commit): Promise<{ commit: Commit; paths: string[] }> {
+    return Promise.resolve({commit: commit, paths: commit.added})
+  }
+
   const commits: Commit[] = [
     buildCommit('src/index.ts'),
     buildCommit('README.md'),
     buildCommit('old-file.ts')
   ]
 
-  it('should return all commits if no paths are defined', () => {
-    const result = filterCommits(commits, [])
+  const client = {
+    error: (message: string, error?: Error | undefined) => {
+      console.log(message)
+    }
+  }
+
+  it('should return all commits if no paths are defined', async () => {
+    const result = await filterCommits(client, commits, [], getPaths)
     expect(result.length).toEqual(3)
   })
 
-  it('should return all commits if the paths are undefined', () => {
-    const result = filterCommits(commits, null)
+  it('should return all commits if the paths are undefined', async () => {
+    const result = await filterCommits(client, commits, null, getPaths)
     expect(result.length).toEqual(3)
   })
 
-  it('should return all commits if a catch all wildcard is defined', () => {
-    const result = filterCommits(commits, ['**/*'])
+  it('should return all commits if a catch all wildcard is defined', async () => {
+    const result = await filterCommits(client, commits, ['**/*'], getPaths)
     expect(result.length).toEqual(3)
   })
 
-  it('should return commits that match the given paths', () => {
-    const result = filterCommits(commits, ['src/index.ts', 'README.md'])
+  it('should return commits that match the given paths', async () => {
+    const result = await filterCommits(client, commits, ['src/index.ts', 'README.md'], getPaths)
     expect(result.length).toEqual(2)
     expect(result[0].added[0]).toEqual(commits[0].added[0])
     expect(result[1].added[0]).toEqual(commits[1].added[0])
   })
 
-  it('should return commits that match the given wildcard paths', () => {
-    const result = filterCommits(commits, ['src/**/*.ts', 'README.md'])
+  it('should return commits that match the given wildcard paths', async () => {
+    const result = await filterCommits(client, commits, ['src/**/*.ts', 'README.md'], getPaths)
     expect(result.length).toEqual(2)
     expect(result[0].added[0]).toEqual(commits[0].added[0])
     expect(result[1].added[0]).toEqual(commits[1].added[0])
   })
 
-  it('should return commits that match the markdown file', () => {
-    const result = filterCommits(commits, ['**/*.md'])
+  it('should return commits that match the markdown file', async () => {
+    const result = await filterCommits(client, commits, ['**/*.md'], getPaths)
     expect(result.length).toEqual(1)
     expect(result[0].added[0]).toEqual(commits[1].added[0])
   })
 
-  it('should return an empty array if no commits match the given paths', () => {
-    const result = filterCommits(commits, ['non-existent-path'])
+  it('should return an empty array if no commits match the given paths', async () => {
+    const result = await filterCommits(client, commits, ['non-existent-path'], getPaths)
     expect(result.length).toEqual(0)
   })
 
-  it('should return an empty array if no commits were defined', () => {
-    const result = filterCommits(null, null)
+  it('should return an empty array if no commits were defined', async () => {
+    const result = await filterCommits(client, null, null, getPaths)
     expect(result.length).toEqual(0)
   })
 
-  it('should return commits that match added, modified, or removed paths', () => {
-    const result = filterCommits(commits, ['old-file.ts'])
+  it('should return commits that match added, modified, or removed paths', async () => {
+    const result = await filterCommits(client, commits, ['old-file.ts'], getPaths)
     expect(result.length).toEqual(1)
     expect(result[0].added[0]).toEqual(commits[2].added[0])
   })

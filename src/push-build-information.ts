@@ -28,7 +28,7 @@ export async function pushBuildInformationFromInputs(
   const repoUri = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}`
   const pushEvent = context.payload as PushEvent | undefined
   const commits: IOctopusBuildInformationCommit[] =
-    (await filterCommits(client, pushEvent?.commits, parameters.paths)).map((commit: Commit) => {
+    (await filterCommits(client, pushEvent?.commits, parameters.paths, getPaths)).map((commit: Commit) => {
       return {
         Id: commit.id,
         Comment: commit.message
@@ -87,22 +87,23 @@ export async function pushBuildInformationFromInputs(
 }
 
 export async function filterCommits(
-  client: Client,
+  client: { error: (message: string, error?: Error | undefined) => void },
   commits: Commit[] | undefined | null,
-  paths: string[] | undefined | null
+  paths: string[] | undefined | null,
+  getPathsFunc: (commit: Commit) => Promise<{ commit: Commit; paths: string[] }>
 ): Promise<Commit[]> {
-  if (!commits) {
+  if (!commits || commits.length === 0) {
     return []
   }
 
-  if (!paths) {
+  if (!paths || paths.length === 0) {
     return commits
   }
 
   const matcher = new AntPathMatcher()
 
   try {
-    return (await Promise.all(commits.map(async commit => getPaths(commit))))
+    return (await Promise.all(commits.map(async commit => getPathsFunc(commit))))
       .filter(commitDetails => commitDetails.paths.some(path => paths.some(p => matcher.match(p, path))))
       .map(commitDetails => commitDetails.commit)
   } catch (error) {
