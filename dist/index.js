@@ -55220,6 +55220,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.filterCommits = exports.pushBuildInformationFromInputs = void 0;
 const core_1 = __nccwpck_require__(37484);
 const github_1 = __nccwpck_require__(93228);
+const core_2 = __nccwpck_require__(61897);
 const api_client_1 = __nccwpck_require__(91212);
 const ant_path_matcher_1 = __importDefault(__nccwpck_require__(23444));
 function pushBuildInformationFromInputs(client, runId, parameters) {
@@ -55230,7 +55231,7 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
         }
         const repoUri = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}`;
         const pushEvent = github_1.context.payload;
-        const commits = filterCommits(pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits, parameters.paths).map((commit) => {
+        const commits = (yield filterCommits(pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits, parameters.paths)).map((commit) => {
             return {
                 Id: commit.id,
                 Comment: commit.message
@@ -55279,28 +55280,38 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
 }
 exports.pushBuildInformationFromInputs = pushBuildInformationFromInputs;
 function filterCommits(commits, paths) {
-    if (!commits) {
-        return [];
-    }
-    const matcher = new ant_path_matcher_1.default();
-    return commits === null || commits === void 0 ? void 0 : commits.filter((commit) => {
-        if (!paths || paths.length === 0) {
-            return true;
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!commits) {
+            return [];
         }
-        if ((!commit.added || commit.added.length === 0) &&
-            (!commit.modified || commit.modified.length === 0) &&
-            (!commit.removed || commit.removed.length === 0)) {
-            return true;
+        if (!paths) {
+            return commits;
         }
-        return paths.some((path) => {
-            var _a, _b, _c;
-            return ((_a = commit.added) === null || _a === void 0 ? void 0 : _a.some((added) => matcher.match(path, added))) ||
-                ((_b = commit.modified) === null || _b === void 0 ? void 0 : _b.some((modified) => matcher.match(path, modified))) ||
-                ((_c = commit.removed) === null || _c === void 0 ? void 0 : _c.some((removed) => matcher.match(path, removed)));
-        });
+        const matcher = new ant_path_matcher_1.default();
+        const matchingCommits = [];
+        for (const commit of commits) {
+            const modifiedPaths = yield getPaths(commit.id);
+            if (paths.some((path) => modifiedPaths.some((added) => matcher.match(path, added)))) {
+                matchingCommits.push(commit);
+            }
+        }
+        return matchingCommits;
     });
 }
 exports.filterCommits = filterCommits;
+function getPaths(commitSha) {
+    var _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        const githubToken = (0, core_1.getInput)('GITHUB_TOKEN');
+        const octokit = new core_2.Octokit({ auth: githubToken });
+        const { data: commit } = yield octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            ref: commitSha
+        });
+        return ((_a = commit.files) === null || _a === void 0 ? void 0 : _a.map(file => file.filename)) || [];
+    });
+}
 
 
 /***/ }),
